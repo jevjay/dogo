@@ -1,0 +1,5 @@
+config:
+  input:
+    - command: joke
+      desc: Tell a random joke from the list
+      timeout: 2
