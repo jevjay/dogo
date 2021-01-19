@@ -33,7 +33,8 @@ func CreateNewContainer(image string) (string, error) {
 		&container.Config{
 			Image: image,
 		},
-		nil, nil, "")
+		nil, nil, nil, "dogo-bot")
+
 	if err != nil {
 		panic(err)
 	}
