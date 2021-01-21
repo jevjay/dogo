@@ -1,11 +1,13 @@
 package main
 
 import (
-	"github.com/nlopes/slack"
 	"log"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
+
+	"github.com/nlopes/slack"
 )
 
 // SlackListener stores Slack API data
@@ -16,7 +18,7 @@ type SlackListener struct {
 }
 
 // ListenAndResponse establishes real time messaging (RTB) connection with Slack messenger
-func (s *SlackListener) ListenAndResponse(cfg *CommandsConfig) {
+func (s *SlackListener) ListenAndResponse(cmds *Commands) {
 	// Start listening slack events
 	rtm := s.client.NewRTM()
 	go rtm.ManageConnection()
@@ -25,7 +27,7 @@ func (s *SlackListener) ListenAndResponse(cfg *CommandsConfig) {
 	for msg := range rtm.IncomingEvents {
 		switch ev := msg.Data.(type) {
 		case *slack.MessageEvent:
-			if err := s.HandleSlackMessage(ev, rtm, cfg); err != nil {
+			if err := s.HandleSlackMessage(ev, rtm, cmds); err != nil {
 				log.Printf("[ERROR] Failed to handle message: %s", err)
 			}
 		}
@@ -33,22 +35,29 @@ func (s *SlackListener) ListenAndResponse(cfg *CommandsConfig) {
 }
 
 // HandleSlackMessage handles Slack message events
-func (s *SlackListener) HandleSlackMessage(ev *slack.MessageEvent, rtm *slack.RTM, cfg *CommandsConfig) error {
+func (s *SlackListener) HandleSlackMessage(ev *slack.MessageEvent, rtm *slack.RTM, cmds *Commands) error {
 	text := ev.Text
 	text = strings.TrimSpace(text)
 	text = strings.ToLower(text)
-	for _, c := range cfg.Command {
-		matched, _ := regexp.MatchString(c.Name, text)
+	cmd := cmds.Configs
+	for _, in := range cmd.Input {
+		matched, _ := regexp.MatchString(in.Command, text)
 		if matched {
-			if c.Answer != "" {
-				rtm.SendMessage(rtm.NewOutgoingMessage(c.Answer, ev.Channel))
-			}
+			// Check command type
+			switch in.Type {
+			case "Docker":
+				// Call docker agent locally
 
-			if c.Image != "" {
-				msg, _ := CreateNewContainer(c.Image)
-				rtm.SendMessage(rtm.NewOutgoingMessage(msg, ev.Channel))
+			case "Lambda":
+				// Call Lambda execution and wait for response
+
+			case "Kubernetes":
+				// Call Kubernetes job execution and wait for response
+
+			default:
+				// Show error message
+
 			}
-			break
 		}
 	}
 	return nil
@@ -56,17 +65,20 @@ func (s *SlackListener) HandleSlackMessage(ev *slack.MessageEvent, rtm *slack.RT
 
 func main() {
 	// Retrieve values
-	token := getenv("SLACKTOKEN")
-	config := getenv("CONFIG")
-	botID := getenv("BOTID")
-	channelID := getenv("CHANNELID")
+	token := getenv("DOGO_SLACKTOKEN")
+	config := getenv("DOGO_CONFIG")
+	botID := getenv("DOGO_BOTID")
+	channelID := getenv("DOGO_CHANNELID")
+	debugMode := getenv("DOGO_DEBUG")
+	debug, _ := strconv.ParseBool(debugMode)
+
 	// Use default config path if no custom path provided
 	if config == "" {
 		config = "config.yaml"
 	}
 
-	commands := CommandsConfig{}
-	commands.ParseConfig(config)
+	commands := Commands{}
+	commands.ParseConfig(config, debug)
 
 	api := slack.New(token,
 		slack.OptionDebug(true),
