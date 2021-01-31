@@ -1,11 +1,14 @@
-package main
+package agents
 
 import (
 	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -13,7 +16,7 @@ import (
 )
 
 // CreateNewContainer used to start new Docker container
-func CreateNewContainer(image string) (string, error) {
+func CreateNewContainer(name string, image string) (string, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.WithVersion("1.39"))
 	if err != nil {
@@ -27,19 +30,31 @@ func CreateNewContainer(image string) (string, error) {
 	}
 
 	io.Copy(os.Stdout, r)
+	i := rand.Int()
+	rand := strconv.Itoa(i)
+	// array of strings.
+	str := []string{name, rand}
 
 	cont, err := cli.ContainerCreate(
 		context.Background(),
 		&container.Config{
-			Image: image,
+			Image:        image,
+			Tty:          true,
+			AttachStdin:  true,
+			AttachStdout: true,
+			AttachStderr: true,
+			OpenStdin:    true,
 		},
-		nil, nil, nil, "dogo-bot")
+		nil, nil, nil, strings.Join(str, "-"))
 
 	if err != nil {
 		panic(err)
 	}
 
-	cli.ContainerStart(ctx, cont.ID, types.ContainerStartOptions{})
+	if err := cli.ContainerStart(ctx, cont.ID, types.ContainerStartOptions{}); err != nil {
+		fmt.Println("error when start container", err)
+		panic(err)
+	}
 
 	out, err := cli.ContainerLogs(ctx, cont.ID, types.ContainerLogsOptions{ShowStdout: true})
 	if err != nil {

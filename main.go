@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	a "dogo/agents"
+
 	"github.com/nlopes/slack"
 )
 
@@ -18,7 +20,7 @@ type SlackListener struct {
 }
 
 // ListenAndResponse establishes real time messaging (RTB) connection with Slack messenger
-func (s *SlackListener) ListenAndResponse(cmds *Commands) {
+func (s *SlackListener) ListenAndResponse(cmds *Commands, c chan OutputConfig) {
 	// Start listening slack events
 	rtm := s.client.NewRTM()
 	go rtm.ManageConnection()
@@ -27,7 +29,7 @@ func (s *SlackListener) ListenAndResponse(cmds *Commands) {
 	for msg := range rtm.IncomingEvents {
 		switch ev := msg.Data.(type) {
 		case *slack.MessageEvent:
-			if err := s.HandleSlackMessage(ev, rtm, cmds); err != nil {
+			if err := s.HandleSlackMessage(ev, rtm, cmds, c); err != nil {
 				log.Printf("[ERROR] Failed to handle message: %s", err)
 			}
 		}
@@ -35,7 +37,7 @@ func (s *SlackListener) ListenAndResponse(cmds *Commands) {
 }
 
 // HandleSlackMessage handles Slack message events
-func (s *SlackListener) HandleSlackMessage(ev *slack.MessageEvent, rtm *slack.RTM, cmds *Commands) error {
+func (s *SlackListener) HandleSlackMessage(ev *slack.MessageEvent, rtm *slack.RTM, cmds *Commands, c chan OutputConfig) error {
 	text := ev.Text
 	text = strings.TrimSpace(text)
 	text = strings.ToLower(text)
@@ -47,7 +49,7 @@ func (s *SlackListener) HandleSlackMessage(ev *slack.MessageEvent, rtm *slack.RT
 			switch in.Type {
 			case "Docker":
 				// Call docker agent locally
-
+				a.CreateNewContainer(in.Command, in.Image)
 			case "Lambda":
 				// Call Lambda execution and wait for response
 
@@ -89,5 +91,8 @@ func main() {
 		botID:     botID,
 		channelID: channelID,
 	}
-	listener.ListenAndResponse(&commands)
+	// Set up agent output channel
+	c := make(chan OutputConfig)
+
+	listener.ListenAndResponse(&commands, c)
 }
