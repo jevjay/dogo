@@ -1,77 +1,38 @@
+// Copyright 2021 tappythumbz development
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
+	cl "dogo/client"
+	cfg "dogo/config"
+
 	"log"
 	"os"
-	"regexp"
 	"strconv"
-	"strings"
-
-	a "dogo/agents"
 
 	"github.com/nlopes/slack"
 )
 
-// SlackListener stores Slack API data
-type SlackListener struct {
-	client    *slack.Client
-	botID     string
-	channelID string
-}
-
-// ListenAndResponse establishes real time messaging (RTB) connection with Slack messenger
-func (s *SlackListener) ListenAndResponse(cmds *Commands, c chan OutputConfig) {
-	// Start listening slack events
-	rtm := s.client.NewRTM()
-	go rtm.ManageConnection()
-
-	// Handle slack events
-	for msg := range rtm.IncomingEvents {
-		switch ev := msg.Data.(type) {
-		case *slack.MessageEvent:
-			if err := s.HandleSlackMessage(ev, rtm, cmds, c); err != nil {
-				log.Printf("[ERROR] Failed to handle message: %s", err)
-			}
-		}
-	}
-}
-
-// HandleSlackMessage handles Slack message events
-func (s *SlackListener) HandleSlackMessage(ev *slack.MessageEvent, rtm *slack.RTM, cmds *Commands, c chan OutputConfig) error {
-	text := ev.Text
-	text = strings.TrimSpace(text)
-	text = strings.ToLower(text)
-	cmd := cmds.Configs
-	for _, in := range cmd.Input {
-		matched, _ := regexp.MatchString(in.Command, text)
-		if matched {
-			// Check command type
-			switch in.Type {
-			case "Docker":
-				// Call docker agent locally
-				a.CreateNewContainer(in.Command, in.Image)
-			case "Lambda":
-				// Call Lambda execution and wait for response
-
-			case "Kubernetes":
-				// Call Kubernetes job execution and wait for response
-
-			default:
-				// Show error message
-
-			}
-		}
-	}
-	return nil
-}
-
 func main() {
 	// Retrieve values
-	token := getenv("DOGO_SLACKTOKEN")
-	config := getenv("DOGO_CONFIG")
-	botID := getenv("DOGO_BOTID")
-	channelID := getenv("DOGO_CHANNELID")
-	debugMode := getenv("DOGO_DEBUG")
+	token := cfg.GetEnv("DOGO_SLACKTOKEN")
+	config := cfg.GetEnv("DOGO_CONFIG")
+	botID := cfg.GetEnv("DOGO_BOTID")
+	channelID := cfg.GetEnv("DOGO_CHANNELID")
+	debugMode := cfg.GetEnv("DOGO_DEBUG")
+	// Convert debug mode value from
 	debug, _ := strconv.ParseBool(debugMode)
 
 	// Use default config path if no custom path provided
@@ -79,20 +40,21 @@ func main() {
 		config = "config.yaml"
 	}
 
-	commands := Commands{}
+	commands := cfg.Commands{}
 	commands.ParseConfig(config, debug)
 
 	api := slack.New(token,
 		slack.OptionDebug(true),
 		slack.OptionLog(log.New(os.Stdout, "slack-bot: ", log.Lshortfile|log.LstdFlags)))
 
-	var listener = &SlackListener{
-		client:    api,
-		botID:     botID,
-		channelID: channelID,
+	listener := cl.SlackListener{
+		Client:    api,
+		BotID:     botID,
+		ChannelID: channelID,
 	}
-	// Set up agent output channel
-	c := make(chan OutputConfig)
 
-	listener.ListenAndResponse(&commands, c)
+	// Set up agent output channel
+	c := make(chan cfg.OutputConfig)
+
+	listener.ListenAndResponse(api, &commands, c)
 }

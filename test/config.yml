@@ -1,5 +1,14 @@
 config:
   input:
-    - command: joke
-      desc: Tell a random joke from the list
-      timeout: 2
+    - command: hello-stdout
+      desc: Say hello
+      timeout: 10
+      type: docker
+      format: stdout
+      image: hello-world
+    - command: hello-json
+      desc: Say hello
+      timeout: 3
+      type: docker
+      format: json
+      image: thomaspoignant/hello-world-rest-json
