@@ -37,8 +37,8 @@ type Container struct {
 	Out string
 }
 
-// Execute used to start new Docker container
-func Execute(name string, image string) (*Container, error) {
+// ExecuteDocker used to start new Docker container
+func ExecuteDocker(name string, image string) (*Container, error) {
 	ctx = context.Background()
 	cli, err := client.NewClientWithOpts(client.WithVersion("1.39"))
 	if err != nil {

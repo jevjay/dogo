@@ -149,7 +149,7 @@ func (s *SlackListener) HandleSlackMessage(api *slack.Client, ev *slack.MessageE
 				// response into our channel.
 				go func() {
 					// Call docker agent locally
-					resp, err := a.Execute(in.Command, in.Image)
+					resp, err := a.ExecuteDocker(in.Command, in.Image)
 					c1 <- resp
 					if err != nil {
 						logger.Log(err.Error(), true)
