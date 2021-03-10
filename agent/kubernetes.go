@@ -84,9 +84,11 @@ func ExecuteKubernetes(kubeconfig *string) error {
 	pod := createPodOjbect()
 
 	// now create the pod in kubernetes cluster using the clientset
-	pod, err = client.CoreV1().Pods(pod.Namespace).Create(context.Context(), pod, metav1.GetOptions)
+	pod, err = client.CoreV1().Pods(pod.Namespace).Create(context.Background(), pod, metav1.CreateOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Println("Pod created successfully...")
+
+	return nil
 }
