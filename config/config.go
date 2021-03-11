@@ -36,15 +36,18 @@ type CommandConfig struct {
 
 // InputConfig stores configuration of a command input
 type InputConfig struct {
-	Args    string        `json:"args" yaml:"args"`
-	Command string        `json:"command" yaml:"command"`
-	Desc    string        `json:"desc" yaml:"desc"`
-	Error   string        `json:"error" yaml:"error"`
-	Image   string        `json:"image" yaml:"image"`
-	Format  string        `json:"format" yaml:"format"`
-	Type    string        `json:"type" yaml:"type"`
-	Timeout time.Duration `json:"timeout" yaml:"timeout"`
-	Output  OutputConfig  `json:"output" yaml:"output"`
+	Args       string        `json:"args" yaml:"args"`
+	Command    string        `json:"command" yaml:"command"`
+	Desc       string        `json:"desc" yaml:"desc"`
+	Error      string        `json:"error" yaml:"error"`
+	Image      string        `json:"image" yaml:"image"`
+	Format     string        `json:"format" yaml:"format"`
+	Type       string        `json:"type" yaml:"type"`
+	Kubeconfig string        `json:"kubeconfig" yaml:"kubeconfig"`
+	Name       string        `json:"name" yaml:"name"`
+	Namespace  string        `json:"namespace" yaml:"namespace"`
+	Timeout    time.Duration `json:"timeout" yaml:"timeout"`
+	Output     OutputConfig  `json:"output" yaml:"output"`
 }
 
 // OutputConfig stores configuration of a command output

@@ -136,7 +136,6 @@ func (s *SlackListener) HandleSlackMessage(api *slack.Client, ev *slack.MessageE
 	text = strings.TrimSpace(text)
 	text = strings.ToLower(text)
 
-	c1 := make(chan *a.Container, 1)
 	cmd := cmds.Configs
 
 	for _, in := range cmd.Input {
@@ -145,6 +144,7 @@ func (s *SlackListener) HandleSlackMessage(api *slack.Client, ev *slack.MessageE
 			// Check command type
 			switch in.Type {
 			case "docker":
+				c1 := make(chan *a.Container, 1)
 				// Run your long running function in it's own goroutine and pass back it's
 				// response into our channel.
 				go func() {
@@ -191,11 +191,63 @@ func (s *SlackListener) HandleSlackMessage(api *slack.Client, ev *slack.MessageE
 					}
 				}
 
+			case "kubernetes":
+				cfg := a.KubernetesAgentConfig{
+					Name:       in.Name,
+					Namespace:  in.Namespace,
+					Image:      in.Image,
+					Kubeconfig: in.Kubeconfig,
+					Command:    in.Command,
+				}
+				c1 := make(chan *a.KubernetesAgent, 1)
+				// Run your long running function in it's own goroutine and pass back it's
+				// response into our channel.
+				go func() {
+					// Call docker agent locally
+					resp, err := a.ExecuteKubernetes(cfg)
+					c1 <- resp
+					if err != nil {
+						logger.Log(err.Error(), true)
+					}
+				}()
+
+				// Listen on our channel AND a timeout channel - which ever happens first.
+				select {
+				case res := <-c1:
+					msg, err := FormatMessage(res.Out, in.Format)
+					if err != nil {
+						logger.Log(err.Error(), true)
+					}
+
+					msg.Channel = ev.Channel
+					msg.Timestamp = ev.EventTimestamp
+					msg.ThreadTimestamp = ev.ThreadTimestamp
+
+					err = SendMessage(api, msg)
+
+					if err != nil {
+						return err
+					}
+
+				case <-time.After(in.Timeout * time.Second):
+					err := fmt.Errorf("Command %v timed out after %v", in.Command, in.Timeout)
+					logger.Log(err.Error(), true)
+
+					// Inform user about timedout command
+					slackErr := SendMessage(api, SlackMessage{
+						Channel:         ev.Channel,
+						Text:            err.Error(),
+						Timestamp:       ev.EventTimestamp,
+						ThreadTimestamp: ev.ThreadTimestamp,
+					})
+
+					if slackErr != nil {
+						return slackErr
+					}
+				}
+
 			case "lambda":
 				// Call Lambda execution and wait for response
-
-			case "kubernetes":
-				// Call Kubernetes job execution and wait for response
 
 			default:
 				// Construct error message
