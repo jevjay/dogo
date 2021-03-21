@@ -12,3 +12,10 @@ config:
       type: docker
       format: json
       image: thomaspoignant/hello-world-rest-json
+    - command: hello-k8s
+      desc: Say hello from k8s
+      timeout: 10
+      type: kubernetes
+      image: thomaspoignant/hello-world-rest-json
+      namespace: default
+      Kubeconfig: .kube/config
